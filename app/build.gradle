@@ -15,6 +15,9 @@
  */
 plugins {
     id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-android-extensions'
+    id 'kotlin-kapt'
 }
 
 android {
@@ -39,7 +42,7 @@ android {
     }
 
     buildFeatures {
-        viewBinding true
+ //       viewBinding true
         dataBinding true
     }
 
@@ -49,6 +52,10 @@ dependencies {
 
     // .jar-based libraries included in project
     implementation fileTree(dir: "libs", include: ["*.jar"])
+
+    // Core Kotlin libraries
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
 
     // Basic Android components
     implementation 'androidx.appcompat:appcompat:1.4.1'
@@ -77,10 +84,5 @@ dependencies {
     // Espresso UI testing library
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
-    // Hilt testing libraries
-    testImplementation "com.google.dagger:hilt-android-testing:$hiltVersion"
-    testAnnotationProcessor "com.google.dagger:hilt-compiler:$hiltVersion"
-    androidTestImplementation "com.google.dagger:hilt-android-testing:$hiltVersion"
-    androidTestAnnotationProcessor "com.google.dagger:hilt-compiler:$hiltVersion"
 
 }

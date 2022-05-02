@@ -13,104 +13,104 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package edu.cnm.deepdive.dla.controller;
+package edu.cnm.deepdive.dla.controller
 
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Toast;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import android.os.Bundle;
-import androidx.databinding.DataBindingUtil;
-import androidx.lifecycle.ViewModelProvider;
-import edu.cnm.deepdive.dla.R;
-import edu.cnm.deepdive.dla.databinding.ActivityMainBinding;
-import edu.cnm.deepdive.dla.viewmodel.MainViewModel;
+import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.ViewModelProvider
+import edu.cnm.deepdive.dla.R
+import edu.cnm.deepdive.dla.databinding.ActivityMainBinding
+import edu.cnm.deepdive.dla.view.LatticeView
+import edu.cnm.deepdive.dla.viewmodel.MainViewModel
 
-public class MainActivity extends AppCompatActivity {
+class MainActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var viewModel: MainViewModel
+    private var running = false
+        set(value) {
+            field = value
+            if (value) {
+                if (startPending) {
+                    startPending = false
+                } else {
+                    viewModel.accumulate()
+                }
+            }
+            invalidateOptionsMenu()
+        }
+    private var startPending = false
 
-  private ActivityMainBinding binding;
-  private MainViewModel viewModel;
-  private boolean running;
-  private boolean startPending;
-
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    running = false;
-    startPending = false;
-    setupViewModel();
-    setupUI();
-  }
-
-  @Override
-  public boolean onCreateOptionsMenu(Menu menu) {
-    super.onCreateOptionsMenu(menu);
-    getMenuInflater().inflate(R.menu.main_options, menu);
-    return true;
-  }
-
-  @Override
-  public boolean onPrepareOptionsMenu(Menu menu) {
-    super.onPrepareOptionsMenu(menu);
-    menu.findItem(R.id.reset).setVisible(!running);
-    menu.findItem(R.id.play).setVisible(!running);
-    menu.findItem(R.id.pause).setVisible(running);
-    return true;
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-    boolean handled = true;
-    int id = item.getItemId();
-    if (id == R.id.reset) {
-      binding.lattice.clear();
-      viewModel.clear();
-    } else if (id == R.id.play) {
-      startPending = true;
-      viewModel.setRunning(true);
-    } else if (id == R.id.pause) {
-      viewModel.setRunning(false);
-    } else {
-      handled = super.onOptionsItemSelected(item);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        running = false
+        startPending = false
+        setupViewModel()
+        setupUI()
     }
-    return handled;
-  }
 
-  private void setupViewModel() {
-    viewModel = new ViewModelProvider(this).get(MainViewModel.class);
-    getLifecycle().addObserver(viewModel);
-    viewModel
-        .getRunning()
-        .observe(this, this::setRunning);
-    viewModel
-        .getThrowable()
-        .observe(this, this::handleThrowable);
-  }
-
-  private void setupUI() {
-    binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
-    binding.setViewModel(viewModel);
-    binding.setLifecycleOwner(this);
-    binding.lattice.setOnSeedListener((v, x, y) -> viewModel.set(x, y));
-  }
-
-  private void setRunning(boolean running) {
-    this.running = running;
-    if (running) {
-      if (startPending) {
-        startPending = false;
-      } else {
-        viewModel.accumulate();
-      }
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        super.onCreateOptionsMenu(menu)
+        menuInflater.inflate(R.menu.main_options, menu)
+        return true
     }
-    invalidateOptionsMenu();
-  }
 
-  private void handleThrowable(Throwable throwable) {
-    if (throwable != null) {
-      Toast.makeText(this, throwable.getMessage(), Toast.LENGTH_LONG).show();
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        with(menu) {
+            super.onPrepareOptionsMenu(menu)
+            findItem(R.id.reset).isVisible = !running
+            findItem(R.id.play).isVisible = !running
+            findItem(R.id.pause).isVisible = running
+        }
+        return true
     }
-  }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        var handled = true
+        val id = item.itemId
+        if (id == R.id.reset) {
+            binding.lattice.clear()
+            viewModel.clear()
+        } else if (id == R.id.play) {
+            startPending = true
+            viewModel.setRunning(true)
+        } else if (id == R.id.pause) {
+            viewModel.setRunning(false)
+        } else {
+            handled = super.onOptionsItemSelected(item)
+        }
+        return handled
+    }
+
+    private fun setupViewModel() {
+        val owner = this
+        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+            .apply {
+                lifecycle.addObserver(this)
+                running.observe(owner) { owner.running = it }
+                throwable.observe(owner) { throwable: Throwable? -> handleThrowable(throwable) }
+            }
+    }
+
+    private fun setupUI() {
+        binding = DataBindingUtil
+            .setContentView<ActivityMainBinding?>(this, R.layout.activity_main)
+            .apply {
+                viewModel = this@MainActivity.viewModel
+                lifecycleOwner = this@MainActivity
+                lattice.setOnSeedListener { v: LatticeView, x: Int, y: Int -> viewModel?.set(x, y) }
+            }
+    }
+
+
+    private fun handleThrowable(throwable: Throwable?) {
+        throwable?.let {
+            Toast
+                .makeText(this, it.message, Toast.LENGTH_LONG)
+                .show()
+        }
+    }
 }

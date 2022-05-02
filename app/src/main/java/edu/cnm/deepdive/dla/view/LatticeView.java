@@ -26,6 +26,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import androidx.annotation.ColorInt;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import edu.cnm.deepdive.dla.model.Direction;
 import java.util.BitSet;
@@ -206,9 +207,10 @@ public class LatticeView extends View {
     return neighborHue;
   }
 
+  @FunctionalInterface
   public interface OnSeedListener {
 
-    void onSeed(LatticeView view, int x, int y);
+    void onSeed(@NonNull LatticeView view, int x, int y);
 
   }
 

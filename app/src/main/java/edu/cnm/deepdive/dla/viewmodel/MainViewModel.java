@@ -84,7 +84,10 @@ public class MainViewModel extends AndroidViewModel implements DefaultLifecycleO
         .subscribe(
             (lattice) -> {
               this.lattice.postValue(lattice);
-              accumulate();
+              //noinspection ConstantConditions
+              if (running.getValue()) {
+                accumulate();
+              }
             },
             (throwable) -> {
               running.postValue(false);
