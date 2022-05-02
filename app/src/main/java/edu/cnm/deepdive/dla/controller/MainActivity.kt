@@ -76,9 +76,9 @@ class MainActivity : AppCompatActivity() {
             viewModel.clear()
         } else if (id == R.id.play) {
             startPending = true
-            viewModel.setRunning(true)
+            viewModel.resume()
         } else if (id == R.id.pause) {
-            viewModel.setRunning(false)
+            viewModel.pause()
         } else {
             handled = super.onOptionsItemSelected(item)
         }
@@ -96,12 +96,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupUI() {
+        val owner = this
         binding = DataBindingUtil
             .setContentView<ActivityMainBinding?>(this, R.layout.activity_main)
             .apply {
-                viewModel = this@MainActivity.viewModel
-                lifecycleOwner = this@MainActivity
-                lattice.setOnSeedListener { v: LatticeView, x: Int, y: Int -> viewModel?.set(x, y) }
+                viewModel = owner.viewModel
+                lifecycleOwner = owner
+                lattice.onSeedListener = { _: LatticeView, x: Int, y: Int -> viewModel?.set(x, y) }
             }
     }
 

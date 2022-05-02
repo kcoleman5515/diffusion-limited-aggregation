@@ -13,205 +13,187 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package edu.cnm.deepdive.dla.view;
+package edu.cnm.deepdive.dla.view
 
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Rect;
-import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewConfiguration;
-import androidx.annotation.ColorInt;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import edu.cnm.deepdive.dla.model.Direction;
-import java.util.BitSet;
-import java.util.Random;
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Rect
+import android.util.AttributeSet
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import androidx.annotation.ColorInt
+import edu.cnm.deepdive.dla.model.Direction
+import java.util.*
 
-public class LatticeView extends View {
+class LatticeView : View {
 
-  private static final int LONG_PRESS_TIMEOUT = ViewConfiguration.getLongPressTimeout();
-  private static final int MAX_CLICK_TRAVEL_SQUARED = 20;
-  private static final int MAX_HUE = 360;
-
-  private final Rect source = new Rect();
-  private final Rect dest = new Rect();
-
-  private OnSeedListener listener;
-  private BitSet lattice;
-  private Bitmap bitmap;
-  private int size;
-  private Random rng = new Random();
-  private int startX;
-  private int startY;
-
-  public LatticeView(Context context) {
-    super(context);
-  }
-
-  public LatticeView(Context context, @Nullable AttributeSet attrs) {
-    super(context, attrs);
-  }
-
-  public LatticeView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-    super(context, attrs, defStyleAttr);
-  }
-
-  public LatticeView(Context context, @Nullable AttributeSet attrs, int defStyleAttr,
-      int defStyleRes) {
-    super(context, attrs, defStyleAttr, defStyleRes);
-  }
-
-  @Override
-  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-    int width = resolveSizeAndState(
-        getPaddingLeft() + getPaddingRight() + getSuggestedMinimumWidth(), widthMeasureSpec, 0);
-    int height = resolveSizeAndState(
-        getPaddingTop() + getPaddingBottom() + getSuggestedMinimumHeight(), heightMeasureSpec, 0);
-    int size = Math.max(width, height);
-    setMeasuredDimension(size, size);
-  }
-
-  @Override
-  public boolean onTouchEvent(MotionEvent event) {
-    boolean handled = false;
-    switch (event.getAction()) {
-      case MotionEvent.ACTION_DOWN:
-        startX = Math.round(event.getX());
-        startY = Math.round(event.getY());
-        handled = true;
-        break;
-      case MotionEvent.ACTION_UP:
-        if (event.getEventTime() - event.getDownTime() < LONG_PRESS_TIMEOUT) {
-          int deltaX = Math.round(event.getX()) - startX;
-          int deltaY = Math.round(event.getY()) - startY;
-          if (deltaX * deltaX + deltaY * deltaY < MAX_CLICK_TRAVEL_SQUARED) {
-            handled = true;
-            performClick();
-          }
+    var onSeedListener: ((LatticeView, Int, Int) -> Unit)? = null
+    var rng = Random()
+    var size = 0
+        set(value) {
+            field = value
+            bitmap = Bitmap
+                .createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                .apply {
+                    eraseColor(Color.BLACK)
+                }
+            source[0, 0, size] = size
+            lattice?.also {
+                drawOnBitmap(it)
+                postInvalidate()
+            }
         }
-        break;
-      default:
-        handled = super.onTouchEvent(event);
-        ;
-    }
-    return handled;
-  }
-
-  @Override
-  public boolean performClick() {
-    super.performClick();
-    listener.onSeed(this, startX * size / getWidth(), startY * size / getWidth());
-    return true;
-  }
-
-  @Override
-  protected void onDraw(Canvas canvas) {
-    if (bitmap != null) {
-      dest.set(0, 0, getWidth(), getHeight());
-      canvas.drawBitmap(bitmap, source, dest, null);
-    }
-  }
-
-  public void setOnSeedListener(OnSeedListener listener) {
-    this.listener = listener;
-  }
-
-  public void clear() {
-    lattice = null;
-    setSize(size);
-  }
-
-  public void setSize(int size) {
-    this.size = size;
-    bitmap = Bitmap.createBitmap(size, size, Config.ARGB_8888);
-    source.set(0, 0, size, size);
-    bitmap.eraseColor(Color.BLACK);
-    if (lattice != null) {
-      drawOnBitmap(lattice);
-      postInvalidate();
-    }
-  }
-
-  public void setLattice(BitSet lattice) {
-    if (bitmap != null) {
-      if (this.lattice != null) {
-        if (lattice != null) {
-          this.lattice.xor(lattice);
-          drawOnBitmap(this.lattice);
-          postInvalidate();
-          this.lattice = (BitSet) lattice.clone();
+    var lattice: BitSet? = null
+        set(value) {
+            bitmap?.let {
+                if (field != null) {
+                    field = value?.let {
+                        field!!.xor(it)
+                        drawOnBitmap(field!!)
+                        postInvalidate()
+                        it.clone() as BitSet
+                    }
+                } else {
+                    field = value?.let {
+                        drawOnBitmap(it)
+                        postInvalidate()
+                        it.clone() as BitSet
+                    }
+                }
+            }
         }
-      } else if (lattice != null) {
-        drawOnBitmap(lattice);
-        postInvalidate();
-        this.lattice = (BitSet) lattice.clone();
-      }
+
+    private val source = Rect()
+    private val dest = Rect()
+    private var bitmap: Bitmap? = null
+    private var startX = 0
+    private var startY = 0
+
+    constructor(context: Context?) : super(context) {}
+
+    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs) {}
+
+    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(
+        context,
+        attrs,
+        defStyleAttr
+    ) {
     }
-  }
 
-  public void setRng(Random rng) {
-    this.rng = rng;
-  }
-
-  private void drawOnBitmap(BitSet lattice) {
-    for (int offset = lattice.nextSetBit(0); offset > -1; offset = lattice.nextSetBit(offset + 1)) {
-      int x = offset % size;
-      int y = offset / size;
-      drawPixel(x, y);
+    constructor(
+        context: Context?, attrs: AttributeSet?, defStyleAttr: Int,
+        defStyleRes: Int
+    ) : super(context, attrs, defStyleAttr, defStyleRes) {
     }
-  }
 
-  private void drawPixel(int x, int y) {
-    float[] hsv = new float[]{0, 1, 1};
-    @ColorInt int color;
-    float neighborHue = getNeighborHue(x, y);
-    if (neighborHue < 0) {
-      neighborHue = rng.nextInt(MAX_HUE);
-    } else {
-      neighborHue += rng.nextInt(3) - 1;
-      neighborHue %= MAX_HUE;
-      if (neighborHue < 0) {
-        neighborHue += MAX_HUE;
-      }
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val width = resolveSizeAndState(
+            paddingLeft + paddingRight + suggestedMinimumWidth, widthMeasureSpec, 0
+        )
+        val height = resolveSizeAndState(
+            paddingTop + paddingBottom + suggestedMinimumHeight, heightMeasureSpec, 0
+        )
+        val size = Math.max(width, height)
+        setMeasuredDimension(size, size)
     }
-    hsv[0] = neighborHue;
-    bitmap.setPixel(x, y, Color.HSVToColor(hsv));
-  }
 
-  private float getNeighborHue(int x, int y) {
-    float[] hsv = new float[]{0, 1, 1};
-    int neighborCount = 0;
-    float neighborHue = -1;
-    for (Direction d : Direction.values()) {
-      int neighborX = x + d.getOffsetX();
-      int neighborY = y + d.getOffsetY();
-      if (neighborX >= 0
-          && neighborX < size
-          && neighborY >= 0
-          && neighborY < size
-      ) {
-        @ColorInt int pixel = bitmap.getPixel(neighborX, neighborY);
-        if (pixel != Color.BLACK
-            && (++neighborCount == 1 || rng.nextInt(neighborCount) == 0)) {
-          Color.colorToHSV(pixel, hsv);
-          neighborHue = hsv[0];
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        var handled = false
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                startX = Math.round(event.x)
+                startY = Math.round(event.y)
+                handled = true
+            }
+            MotionEvent.ACTION_UP -> if (event.eventTime - event.downTime < LONG_PRESS_TIMEOUT) {
+                val deltaX = Math.round(event.x) - startX
+                val deltaY = Math.round(event.y) - startY
+                if (deltaX * deltaX + deltaY * deltaY < MAX_CLICK_TRAVEL_SQUARED) {
+                    handled = true
+                    performClick()
+                }
+            }
+            else -> {
+                handled = super.onTouchEvent(event)
+            }
         }
-      }
+        return handled
     }
-    return neighborHue;
-  }
 
-  @FunctionalInterface
-  public interface OnSeedListener {
+    override fun performClick(): Boolean {
+        super.performClick()
+        onSeedListener?.invoke(this, startX * size / width, startY * size / width)
+        return true
+    }
 
-    void onSeed(@NonNull LatticeView view, int x, int y);
+    override fun onDraw(canvas: Canvas) {
+        bitmap?.let {
+            dest.set(0, 0, width, height)
+            canvas.drawBitmap(it, source, dest, null)
+        }
+    }
 
-  }
 
+    fun clear() {
+        lattice = null
+        size = size
+    }
+
+    private fun drawOnBitmap(lattice: BitSet) {
+        var offset = lattice.nextSetBit(0)
+        while (offset > -1) {
+            val x = offset % size
+            val y = offset / size
+            drawPixel(x, y)
+            offset = lattice.nextSetBit(offset + 1)
+        }
+    }
+
+    private fun drawPixel(x: Int, y: Int) {
+        val hsv = floatArrayOf(0f, 1f, 1f)
+        @ColorInt var color: Int
+        var neighborHue = getNeighborHue(x, y)
+        if (neighborHue < 0) {
+            neighborHue = rng.nextInt(MAX_HUE).toFloat()
+        } else {
+            neighborHue += (rng.nextInt(3) - 1).toFloat()
+            neighborHue %= MAX_HUE.toFloat()
+            if (neighborHue < 0) {
+                neighborHue += MAX_HUE.toFloat()
+            }
+        }
+        hsv[0] = neighborHue
+        bitmap?.setPixel(x, y, Color.HSVToColor(hsv))
+    }
+
+    private fun getNeighborHue(x: Int, y: Int): Float {
+        val hsv = floatArrayOf(0f, 1f, 1f)
+        var neighborCount = 0
+        var neighborHue = -1f
+        for (d in Direction.values()) {
+            val neighborX = x + d.offsetX
+            val neighborY = y + d.offsetY
+            if (neighborX >= 0 && neighborX < size && neighborY >= 0 && neighborY < size) {
+                @ColorInt val pixel = bitmap!!.getPixel(neighborX, neighborY)
+                if (pixel != Color.BLACK
+                    && (++neighborCount == 1 || rng.nextInt(neighborCount) == 0)
+                ) {
+                    Color.colorToHSV(pixel, hsv)
+                    neighborHue = hsv[0]
+                }
+            }
+        }
+        return neighborHue
+    }
+
+
+    companion object {
+        private val LONG_PRESS_TIMEOUT = ViewConfiguration.getLongPressTimeout()
+        private const val MAX_CLICK_TRAVEL_SQUARED = 20
+        private const val MAX_HUE = 360
+    }
 }

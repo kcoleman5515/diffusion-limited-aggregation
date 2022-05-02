@@ -13,121 +13,101 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package edu.cnm.deepdive.dla.viewmodel;
+package edu.cnm.deepdive.dla.viewmodel
 
-import android.app.Application;
-import android.util.Log;
-import androidx.annotation.NonNull;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.DefaultLifecycleObserver;
-import androidx.lifecycle.LifecycleOwner;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import edu.cnm.deepdive.dla.service.LatticeRepository;
-import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import java.util.BitSet;
-import java.util.Random;
-import org.apache.commons.rng.simple.JDKRandomBridge;
-import org.apache.commons.rng.simple.RandomSource;
-import org.jetbrains.annotations.NotNull;
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.*
+import edu.cnm.deepdive.dla.service.LatticeRepository
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import org.apache.commons.rng.simple.JDKRandomBridge
+import org.apache.commons.rng.simple.RandomSource
+import java.util.*
 
-public class MainViewModel extends AndroidViewModel implements DefaultLifecycleObserver {
+class MainViewModel(application: Application) : AndroidViewModel(application),
+    DefaultLifecycleObserver {
 
-  private final LatticeRepository repository;
-  private final MutableLiveData<BitSet> lattice;
-  private final MutableLiveData<Boolean> running;
-  private final LiveData<Random> rng;
-  private final MutableLiveData<Throwable> throwable;
-  private final CompositeDisposable pending;
+    private val repository = LatticeRepository(application)
+    private val pending = CompositeDisposable()
 
-  public MainViewModel(@NonNull Application application) {
-    super(application);
-    repository = new LatticeRepository(application);
-    lattice = new MutableLiveData<>();
-    running = new MutableLiveData<>(false);
-    rng = new MutableLiveData<>(new JDKRandomBridge(RandomSource.XO_RO_SHI_RO_128_PP, null));
-    throwable = new MutableLiveData<>();
-    pending = new CompositeDisposable();
-  }
+    val rng: LiveData<Random> =
+        MutableLiveData(JDKRandomBridge(RandomSource.XO_RO_SHI_RO_128_PP, null))
 
-  public LiveData<BitSet> getLattice() {
-    return lattice;
-  }
+    private val _lattice: MutableLiveData<BitSet> = MutableLiveData()
+    val lattice: LiveData<BitSet>
+        get() = _lattice
 
-  public LiveData<Integer> getSize() {
-    return repository.getSize();
-  }
+    private val _running: MutableLiveData<Boolean> = MutableLiveData(false)
+    val running: LiveData<Boolean>
+        get() = _running
 
-  public LiveData<Boolean> getRunning() {
-    return running;
-  }
+    private val _throwable: MutableLiveData<Throwable?> = MutableLiveData()
+    val throwable: LiveData<Throwable?>
+        get() = _throwable
 
-  public void setRunning(boolean running) {
-    if (running) {
-      accumulate();
+
+
+    val size: LiveData<Int>
+        get() = repository.size
+
+    fun resume() {
+        accumulate()
+        _running.value = true
     }
-    this.running.setValue(running);
-  }
 
-  public LiveData<Random> getRng() {
-    return rng;
-  }
+    fun pause() {
+        _running.value = false
+    }
 
-  public LiveData<Throwable> getThrowable() {
-    return throwable;
-  }
 
-  public void accumulate() {
-    throwable.postValue(null);
-    repository
-        .accumulate(1)
-        .subscribe(
-            (lattice) -> {
-              this.lattice.postValue(lattice);
-              //noinspection ConstantConditions
-              if (running.getValue()) {
-                accumulate();
-              }
-            },
-            (throwable) -> {
-              running.postValue(false);
-              postThrowable(throwable);
-            },
-            pending
-        );
-  }
+    fun accumulate() {
+        _throwable.postValue(null)
+        repository
+            .accumulate(1)
+            .subscribe(
+                { lattice: BitSet ->
+                    _lattice.postValue(lattice)
+                    running.value?.run {
+                        accumulate()
+                    }
+                },
+                {
+                    _running.postValue(false)
+                    postThrowable(it)
+                },
+                pending
+            )
+    }
 
-  public void clear() {
-    throwable.setValue(null);
-    repository
-        .clear()
-        .subscribe(
-            lattice::postValue,
-            this::postThrowable,
-            pending
-        );
-  }
+    fun clear() {
+        _throwable.value = null
+        repository
+            .clear()
+            .subscribe(
+                { _lattice.postValue(it) },
+                { postThrowable(it) },
+                pending
+            )
+    }
 
-  public void set(int x, int y) {
-    throwable.setValue(null);
-    repository
-        .set(x, y)
-        .subscribe(
-            lattice::postValue,
-            this::postThrowable,
-            pending
-        );
-  }
+    operator fun set(x: Int, y: Int) {
+        _throwable.value = null
+        repository
+            .set(x, y)
+            .subscribe(
+                { _lattice.postValue(it) },
+                { postThrowable(it) },
+                pending
+            )
+    }
 
-  @Override
-  public void onStop(@NonNull @NotNull LifecycleOwner owner) {
-    pending.clear();
-    DefaultLifecycleObserver.super.onStop(owner);
-  }
+    override fun onStop(owner: LifecycleOwner) {
+        pending.clear()
+        super.onStop(owner)
+    }
 
-  private void postThrowable(Throwable throwable) {
-    Log.e(getClass().getSimpleName(), throwable.getMessage(), throwable);
-    this.throwable.postValue(throwable);
-  }
-
+    private fun postThrowable(throwable: Throwable) {
+        Log.e(javaClass.simpleName, throwable.message, throwable)
+        _throwable.postValue(throwable)
+    }
 }
