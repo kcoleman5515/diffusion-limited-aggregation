@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">DLA</string>
+  <string name="lattice_description">Aggregation lattice</string>
+  <string name="play_title">Run DLA</string>
+  <string name="pause_title">Pause DLA</string>
+  <string name="restart_title">Reset</string>
+  <string name="no_aggregate_message">There must be at least 1 seed point to perform aggregation.</string>
+  <string name="boundary_reached_message">The boundary of the lattice has been reached; further aggregation is not allowed.</string>
+</resources>
